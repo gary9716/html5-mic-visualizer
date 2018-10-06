@@ -2,6 +2,7 @@ window.onload = function () {
     "use strict";
     var paths = document.getElementsByTagName('path');
     var visualizer = document.getElementById('visualizer');
+    var audioSelect = document.querySelector('select#audioSource');
     var mask = visualizer.getElementById('mask');
     var h = document.getElementsByTagName('h1')[0];
     var hSub = document.getElementsByTagName('h1')[1];
@@ -88,6 +89,25 @@ window.onload = function () {
         console.log(error);
     }
 
+    function getStream() {
+        permission = false;
+        if (window.stream) {
+            window.stream.getTracks().forEach(function(track) {
+            track.stop();
+            });
+        }
+        
+        var constraints = {
+            audio: {
+                deviceId: {exact: audioSelect.value}
+            }
+        };
+        
+        navigator.mediaDevices.getUserMedia(constraints).then(soundAllowed).catch(soundNotAllowed);
+
+        AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContent = new AudioContext();
+    }
 
     document.getElementById('button').onclick = function () {
         if (start) {
@@ -97,16 +117,35 @@ window.onload = function () {
         }
         else {
             if (!permission) {
-                navigator.mediaDevices.getUserMedia({audio:true})
-                    .then(soundAllowed)
-                    .catch(soundNotAllowed);
-
-                AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioContent = new AudioContext();
+                getStream();
             }
             start = true;
             this.innerHTML = "<span class='fa fa-stop'></span>Stop Listen";
             this.className = "red-button";
         }
     };
+
+    //list avaiable microphones
+    function handleError(error) {
+        console.log('Error: ', error);
+    }
+
+    function gotDevices(deviceInfos) {
+        for (var i = 0; i < deviceInfos.length; ++i) {
+          var deviceInfo = deviceInfos[i];
+          console.log(deviceInfo);
+          var option = document.createElement('option');
+          option.value = deviceInfo.deviceId;
+          if (deviceInfo.kind === 'audioinput') {
+            option.text = deviceInfo.label ||
+              'microphone ' + (audioSelect.length + 1);
+            audioSelect.appendChild(option);
+          } else {
+            console.log('Found one other kind of source/device: ', deviceInfo);
+          }
+        }
+    }
+
+    navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
+
 };
